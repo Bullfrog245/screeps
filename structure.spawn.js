@@ -121,7 +121,7 @@ var structureSpawn = (function () {
                 );
 
 				room.visual.text(
-					`🛠️ ${creep.memory.role} (${percent}%)`,
+					`${creep.memory.role} (${percent}%)`,
 					spawn.pos.x,
 					spawn.pos.y + 1.5,
                     {align: 'center', opacity: 0.8}
