@@ -12,7 +12,7 @@ var structureSpawn = (function () {
 	var rolePriorities = {
 		'harvester': 1,
 		'upgrader': 1,
-		'harvester': 2,
+		'builder': 1,
     };
 
     var config = {
@@ -22,21 +22,12 @@ var structureSpawn = (function () {
 	return {
 
 		/** */
-		run: function(room) {
-            this.room = room;
+		run: function(currentRoom) {
+            room = currentRoom;
+            spawn = Game.getObjectById(room.memory.structure_spawn[0]);
 
-            // Find() has a medium CPU cost. Cache the spawn ID and reference it
-            // directly. Update the cache based on the config.
-            if (this.room.memory.spawnId === undefined || Game.time % config.spawnCache == 0) {
-                this.room.memory.spawnId = this.room.find(FIND_MY_SPAWNS).shift().id;
-            }
-            this.spawn = Game.getObjectById(this.room.memory.spawnId);
-
-            /** @TODO */
-            // Need to bail if this is a room that doesn't have a spawn. I don't
-            // know how this looks yet...
-
-            //console.log(JSON.stringify(this.spawn, 0, 2));
+            if (null === spawn)
+                return false;
 
 			/** Creep Spawning */
 			this.spawnCreeps();
@@ -46,7 +37,7 @@ var structureSpawn = (function () {
          * Check to see if any creeps need to be spawned
          */
 		spawnCreeps: function () {
-            var creeps = this.room.find(FIND_MY_CREEPS);
+            var creeps = room.find(FIND_MY_CREEPS);
             var creepRoles = {};
 
             // Get counts of each role in the current room
@@ -75,7 +66,7 @@ var structureSpawn = (function () {
          */
         spawnCreep: function (role, parts) {
             var name = role + Game.time;
-            var status = this.spawn.spawnCreep(parts, name, {
+            var status = spawn.spawnCreep(parts, name, {
                 memory: {role: role}
             });
 
@@ -102,6 +93,13 @@ var structureSpawn = (function () {
 		},
 
         /**
+         * Creep defination for harvester
+         */
+		_spawn_builder: function () {
+            this.spawnCreep('builder', [WORK,CARRY,MOVE]);
+		},
+
+        /**
          * Show a message when a spawner is spawning
          *
          * this.spawn.spawning
@@ -112,9 +110,9 @@ var structureSpawn = (function () {
          * }
          */
 		spawnMessage: function () {
-			if (this.spawn.spawning) {
-                var creep = Game.creeps[this.spawn.spawning.name];
-                var time = this.spawn.spawning;
+			if (spawn.spawning) {
+                var creep = Game.creeps[spawn.spawning.name];
+                var time = spawn.spawning;
 
                 // The spawning message appears a tick late. This is why we
                 // have to add one to remainingTime
@@ -122,10 +120,10 @@ var structureSpawn = (function () {
                     ((time.needTime - time.remainingTime + 1) / time.needTime) * 100
                 );
 
-				this.room.visual.text(
+				room.visual.text(
 					`🛠️ ${creep.memory.role} (${percent}%)`,
-					this.spawn.pos.x,
-					this.spawn.pos.y + 1.5,
+					spawn.pos.x,
+					spawn.pos.y + 1.5,
                     {align: 'center', opacity: 0.8}
                 );
 			}
