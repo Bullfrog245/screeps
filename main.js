@@ -1,13 +1,17 @@
-var behaviorCreeps = require('behavior.creeps');
+var helperError = require('helper.error');
 
-var roleHarvester = require('role.harvester');
-var roleUpgrader = require('role.upgrader');
-var roleBuilder = require('role.builder');
+var structureController = require('structure.controller');
+var structureSpawn = require('structure.spawn');
+var structureTower = require('structure.tower');
 
+var behaviorCreep = require('behavior.creep');
+
+/** */
 module.exports.loop = function () {
-    console.log(Game.time);
-    
-    /** Garbage Collection */
+    //console.log(JSON.stringify(Game, 0, 2));
+
+    // Garbage Collection
+    // @TODO move this to a module
     for (var name in Memory.creeps) {
         if (!Game.creeps[name]) {
             delete Memory.creeps[name];
@@ -15,36 +19,13 @@ module.exports.loop = function () {
         }
     }
 
-    behaviorCreeps.run();
+    /** Iterate through each room and do the stuff */
+    _.forOwn(Game.rooms, function (room) {
+        //console.log(JSON.stringify(room, 0, 2));
+        structureController.run(room);
+        structureSpawn.run(room);
+        structureTower.run(room);
+    });
 
-
-
-
-    var tower = Game.getObjectById('79a15f101463c1efab5253af');
-    if(tower) {
-        var closestDamagedStructure = tower.pos.findClosestByRange(FIND_STRUCTURES, {
-            filter: (structure) => structure.hits < structure.hitsMax
-        });
-        if(closestDamagedStructure) {
-            tower.repair(closestDamagedStructure);
-        }
-
-        var closestHostile = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
-        if(closestHostile) {
-            tower.attack(closestHostile);
-        }
-    }
-
-    for(var name in Game.creeps) {
-        var creep = Game.creeps[name];
-        if(creep.memory.role == 'harvester') {
-            roleHarvester.run(creep);
-        }
-        if(creep.memory.role == 'upgrader') {
-            roleUpgrader.run(creep);
-        }
-        if(creep.memory.role == 'builder') {
-            roleBuilder.run(creep);
-        }
-    }
+    behaviorCreep.run();
 }
