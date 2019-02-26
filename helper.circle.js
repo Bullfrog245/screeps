@@ -1,5 +1,7 @@
 /**
  * Circle Helper
+ *
+ * @link https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
  */
 module.exports = (function () {
 

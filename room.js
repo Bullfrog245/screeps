@@ -8,7 +8,13 @@ let Debug = require("debug");
 let Circle = require('helper.circle');
 
 /**
+ * Assign tasks to creeps
  *
+ * Each prototype has a dispatch() function that allows it to add a task to
+ * the list.
+ *
+ * @TODO allow multiple creeps per task
+ * @TODO task priorities
  */
 Room.prototype.processTasks = function() {
     Debug.log("Room.processTasks();", 1);
@@ -132,6 +138,8 @@ Room.prototype.deleteTask = function (id) {
 
 /**
  * Find a source with space for harvesting
+ *
+ * @TODO update source worker counts
  */
 Room.prototype.findSource = function () {
     let available = _.filter(this.sources, function (s) {
@@ -157,7 +165,7 @@ Room.prototype.pullPermits = function () {
         STRUCTURE_CONTAINER,
     ];
 
-    //
+    // The number of each structure we want at each RCL
     let limits = {
         [STRUCTURE_EXTENSION]: {0:0,1:0,2:5,3:10,4:20,5:30,6:40,7:50,8:60},
         [STRUCTURE_CONTAINER]: {0:0,1:0,2:5,3:5,4:5,5:5,6:5,7:5,8:5},
@@ -187,8 +195,7 @@ Room.prototype.pullPermits = function () {
         }
     }.bind(this));
 
-
-    return "OK";
+    return OK;
 }
 
 
@@ -196,6 +203,10 @@ Room.prototype.pullPermits = function () {
 /* Room Properties
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 /**
+ * Cache all of the sources in a room.
+ *
+ * @TODO sort sources by proximity distance to spawn/controller
+ *
  * @return {object}
  */
 Object.defineProperty(Room.prototype, 'sources', {
