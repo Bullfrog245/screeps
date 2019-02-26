@@ -46,6 +46,13 @@ Room.prototype.processTasks = function() {
     _.forOwn(tasks, function(task, id) {
         let entity = Game.getObjectById(id);
 
+        // When a ConstructionSite changes to a Structure, the ID changes.
+        // Remove any tasks associated with stale ConstructionSite IDs.
+        if (!entity) {
+            this.deleteTask(id);
+            return true;
+        }
+
         // If the current task is processing, move on to the next one
         if ("processing" === task.status) {
             if (!Game.creeps[task.creep]) {
@@ -53,8 +60,12 @@ Room.prototype.processTasks = function() {
                 task.status = false;
                 task.creep = false;
             } else {
-                entity[task.callback](task);
-                return true;
+                try {
+                    entity[task.callback](task);
+                    return true;
+                } catch (e) {
+                    Debug.log(e.stack, 5)
+                }
             }
         }
 
@@ -71,7 +82,7 @@ Room.prototype.processTasks = function() {
         task.status = "processing";
         task.creep = creep.name;
         entity[task.callback](task);
-    });
+    }.bind(this));
 
     // Generate construction sites. Since this is a CPU intensive operation,
     // only check if permits need pulled every 60 ticks.
