@@ -20,7 +20,7 @@ StructureController.prototype.dispatch = function () {
 StructureController.prototype.signController = function (task) {
     let creep = Game.creeps[task.creep];
     try {
-        let status = creep.signController(this, "¯\_(ツ)_/¯");
+        let status = creep.signController(this, "\u{1F438}");
 
         switch(status) {
             case OK:
