@@ -8,6 +8,9 @@ var helperCache = (function () {
         run: function (currentRoom) {
             room = currentRoom;
 
+            if (!room.memory.hasOwnProperty("tasks"))
+                room.memory.tasks = {};
+
             this.garbageCollect();
             this.cacheStructure(STRUCTURE_CONTROLLER);
             this.cacheStructure(STRUCTURE_SPAWN);

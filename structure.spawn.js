@@ -3,6 +3,76 @@
  *
  * @link https://emojipedia.org/objects/
  */
+//let Config = require("config");
+let Debug = require("debug");
+
+/**
+ *
+ */
+StructureSpawn.prototype.dispatch = function () {
+    // Ensure there is at least one worker
+    if (_.isEmpty(Game.creeps))
+        this.spawnCreep([WORK, CARRY, MOVE]);
+
+    if (Object.keys(Game.creeps).length < this.room.controller.level * 2)
+        this.spawnCreep([WORK, CARRY, MOVE]);
+
+    // Check if the spawn needs energy
+    if (this.energy < this.energyCapacity) {
+        // Only add an energy request if a request hasn't already been made
+        this.room.addTask(this.id, "gatherEnergy");
+    } else {
+        // Remove the energy request if the energy is full
+        this.room.deleteTask(this.id);
+    }
+};
+
+StructureSpawn.prototype.gatherEnergy = function (task) {
+    let creep = Game.creeps[task.creep];
+
+    if (creep.carry.energy < creep.carryCapacity) {
+        creep.harvestEnergy();
+    } else {
+        creep.transfer(this, RESOURCE_ENERGY)
+    }
+};
+
+/**
+ * Add automatic creep naming to the spawnCreep() method
+ */
+if (!StructureSpawn.prototype._spawnCreep) {
+    StructureSpawn.prototype._spawnCreep = StructureSpawn.prototype.spawnCreep;
+
+    /**
+     * Start the creep spawning process. The required energy amount can be
+     * withdrawn from all spawns and extensions in the room.
+     *
+     * @param {array} body
+     * @param {object} opts
+     */
+    StructureSpawn.prototype.spawnCreep = function(body, opts = {}) {
+        // Creep names are of the form "c#". We increment creepName with each
+        // creep that is spawned.
+        if (!Memory.creepName) Memory.creepName = 1;
+
+        // Set default opts
+        let defaultOpts = {memory: {busy: false, needEnergy: true}};
+        opts = _.extend(defaultOpts, opts);
+
+        // Increment creepName until we have a name that doesn't exist. Prevents
+        // errors should memory be cleared unexpectedly
+        let name;
+        let canCreate;
+        do {
+            name = `Creep${Memory.creepName++}`;
+            canCreate = this._spawnCreep(body, name, {dryRun: true});
+        } while (canCreate === ERR_NAME_EXISTS);
+
+        // Call the original function passing in our generated name
+        return this._spawnCreep(body, name, opts);
+    };
+}
+
 var structureSpawn = (function () {
     var helperError = require('helper.error');
 
@@ -10,7 +80,7 @@ var structureSpawn = (function () {
     var spawn;
 
 	var rolePriorities = {
-		'harvester': 1,
+		'harvester': 2,
 		'upgrader': 1,
 		'builder': 1,
     };
@@ -37,25 +107,7 @@ var structureSpawn = (function () {
          * Check to see if any creeps need to be spawned
          */
 		spawnCreeps: function () {
-            var creeps = room.find(FIND_MY_CREEPS);
-            var creepRoles = {};
 
-            // Get counts of each role in the current room
-            if (creeps.length) {
-                _.forOwn(creeps, function (creep) {
-                    var role = creep.memory.role
-                    creepRoles[role] = (creepRoles[role] || 0) + 1;
-                });
-            }
-
-            // Check the creep list against the priorities list and spawn as
-            // needed
-            _.forOwn(rolePriorities, function (count, role) {
-                if (creepRoles[role] === undefined || creepRoles[role] < count) {
-                    this["_spawn_" + role]();
-                    return false;
-                }
-            }.bind(this));
         },
 
         /**
@@ -65,39 +117,10 @@ var structureSpawn = (function () {
          * @param {array} parts
          */
         spawnCreep: function (role, parts) {
-            var name = role + Game.time;
-            var status = spawn.spawnCreep(parts, name, {
-                memory: {role: role}
-            });
 
-            if (OK === status || ERR_BUSY === status) {
-                this.spawnMessage();
-            } else {
-                var message = helperError.message(status);
-                console.log(`Cannot spawn ${role}: ${message}`);
-            }
         },
 
-        /**
-         * Creep defination for upgrader
-         */
-		_spawn_upgrader: function () {
-            this.spawnCreep('upgrader', [WORK,CARRY,MOVE]);
-		},
 
-        /**
-         * Creep defination for harvester
-         */
-		_spawn_harvester: function () {
-            this.spawnCreep('harvester', [WORK,CARRY,MOVE]);
-		},
-
-        /**
-         * Creep defination for harvester
-         */
-		_spawn_builder: function () {
-            this.spawnCreep('builder', [WORK,CARRY,MOVE]);
-		},
 
         /**
          * Show a message when a spawner is spawning
@@ -127,7 +150,8 @@ var structureSpawn = (function () {
                     {align: 'center', opacity: 0.8}
                 );
 			}
-		}
+        },
+
 	}
 })();
 
