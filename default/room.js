@@ -19,37 +19,40 @@ let Circle = require('helper.circle');
 Room.prototype.processTasks = function() {
     Debug.log("Room.processTasks();", 1);
 
-    if (!this.memory.tasks) this.memory.tasks = {};
-
     // Allow all structures to queue tasks
-    _.forEach(this.find(FIND_MY_STRUCTURES), function (structure) {
+    let structures = this.find(FIND_MY_STRUCTURES);
+    for (let i = 0, l = structures.length; i < l; ++i) {
         try {
-            structure.dispatch();
-        } catch (error) {
-            Debug.log(error.stack, 5)
+            structures[i].dispatch();
+        } catch (e) {
+            Debug.log(structures[i].structureType, 5);
+            Debug.error(e);
         }
-    });
+    }
 
-    let tasks = this.memory.tasks;
-    Debug.log(tasks, 2);
-
-    if (_.isEmpty(tasks))
+    // Do nothing if there are no tasks
+    if (!Object.keys(this.tasks).length)
         return false;
 
+    // Order tasks by priority
+    let tasks = _.sortByAll(this.tasks, ["priority"]);
+    Debug.log(tasks, 2);
+
     // Get idle creeps in the current room
-    let idleCreeps = _.filter(Game.creeps,
-        (c) => c.memory.busy == false && c.room == this && c.spawning == false
+    let idleCreeps = _.filter(Game.creeps, (c) =>
+        c.memory.busy == false && c.room == this && c.spawning == false
     );
     Debug.log(`${idleCreeps.length} idle creeps`, 1);
 
     // Process the task list
-    _.forOwn(tasks, function(task, id) {
-        let entity = Game.getObjectById(id);
+    _.forOwn(tasks, function(task, key) {
+        // Load the task entity
+        let entity = Game.getObjectById(task.id);
 
-        // When a ConstructionSite changes to a Structure, the ID changes.
-        // Remove any tasks associated with stale ConstructionSite IDs.
+        // Remove any tasks associated with stale IDs
+        // (E.g., When a ConstructionSite changes to a Structure)
         if (!entity) {
-            this.deleteTask(id);
+            this.deleteTask(key);
             return true;
         }
 
@@ -64,16 +67,16 @@ Room.prototype.processTasks = function() {
                     entity[task.callback](task);
                     return true;
                 } catch (e) {
-                    Debug.log(e.stack, 5)
+                    Debug.log(task.callback, 5);
+                    Debug.error(e);
                 }
             }
         }
 
-        // If there are no idle creeps, check if we need to spawn some
-        if (_.isEmpty(idleCreeps)) {
-            // @todo Spawn some creeps
-            return false;
-        }
+        // If there are no idle creeps, move on to the next task. We can't
+        // break here, because then "processing" tasks won't get called.
+        if (!idleCreeps.length)
+            return true;
 
         // Assign a creep to the task
         let creep = idleCreeps.shift();
@@ -84,20 +87,38 @@ Room.prototype.processTasks = function() {
         entity[task.callback](task);
     }.bind(this));
 
+    // If there are still idle creeps, have them build construction sites or
+    // upgrade the controller. We don't set their "busy" flag, which lets them
+    // be used on the next tick if a higher priority task becomes available.
+    if (idleCreeps.length) {
+        let constructionSites = this.find(FIND_MY_CONSTRUCTION_SITES);
+        for (let i = 0, l = constructionSites.length; i < l; ++i) {
+            try {
+                constructionSites[i].dispatch();
+            } catch (e) {
+                Debug.log(constructionSites[i].structureType);
+                //Debug.log(e.stack, 5)
+            }
+        }
+
+        _.forEach(idleCreeps, function (creep) {
+            if (constructionSites.length) {
+                constructionSites[0].build({creep: creep.name});
+            } else {
+                this.controller.upgrade({creep: creep.name});
+            }
+        }.bind(this));
+    }
+
     // Generate construction sites. Since this is a CPU intensive operation,
     // only check if permits need pulled every 60 ticks.
     if (Game.time % 60 == 0)
         this.pullPermits();
-
-    // Allow all construction sites to queue tasks
-    _.forEach(this.find(FIND_MY_CONSTRUCTION_SITES), function (site) {
-        try {
-            site.dispatch();
-        } catch (error) {
-            Debug.log(error.stack, 5)
-        }
-    });
 };
+
+Room.prototype.taskKey = function (entity, callable) {
+    return [entity.id, callable].join("_");
+}
 
 /**
  * Add a task
@@ -106,22 +127,26 @@ Room.prototype.processTasks = function() {
  * @param {string} callable
  * @param {object} config
  */
-Room.prototype.addTask = function (id, callable, config = {}) {
-    Debug.log(`Room.addTask(${id}, ${callable}, ${config});`, 1);
+Room.prototype.addTask = function (entity, callable, config = {}) {
+    Debug.log(`Room.addTask(${entity.id}, ${callable}, ${config});`, 1);
 
-    if (this.memory.tasks.hasOwnProperty(id))
+    let key = this.taskKey(entity, callable);
+
+    if (this.tasks.hasOwnProperty(key))
         return "ERR_DUPLICATE_TASK";
 
     // Allow custom data to be stored per task
     let defaultConfig = {
+        id: entity.id,
         callback: callable,
         status: false,
+        priority: 5,
         creep: false,
     };
-    this.memory.tasks[id] = _.extend(defaultConfig, config);
-    Debug.log(`Task ${id}: ${callable} added`, 3);
+    this.tasks[key] = _.extend(defaultConfig, config);
+    Debug.log(`Task ${key} added`, 3);
 
-    return "OK";
+    return OK;
 }
 
 /**
@@ -129,22 +154,29 @@ Room.prototype.addTask = function (id, callable, config = {}) {
  *
  * @param {string} id
  */
-Room.prototype.deleteTask = function (id) {
-    if (!this.memory.tasks.hasOwnProperty(id))
-        return "ERR_TASK_NOT_FOUND";
+Room.prototype.deleteTask = function (entity, callable = null) {
+    Debug.log(`Room.deleteTask(${entity.id}, ${callable});`, 1);
+
+    // If the task belongs to a non-existant entity, we won't be able to
+    // generate a taskKey();
+    let key = (typeof entity === 'string') ? entity : this.taskKey(entity, callable);
+
+    // Can't delete it if it doesn't exist
+    if (!this.tasks.hasOwnProperty(key))
+        return ERR_NOT_FOUND;
 
     // Free up the creep that was working on the task
-    let creep = Game.creeps[this.memory.tasks[id].creep];
+    let creep = Game.creeps[this.tasks[key].creep];
     if (creep) {
         creep.memory.busy = false;
         Debug.log(`${creep.name} no longer busy`, 3);
     }
 
     // Delete the task
-    delete this.memory.tasks[id];
-    Debug.log(`Task ${id} deleted`, 3);
+    delete this.tasks[key];
+    Debug.log(`Task ${key} deleted`, 3);
 
-    return "OK";
+    return OK;
 }
 
 /**
@@ -225,7 +257,14 @@ Object.defineProperty(Room.prototype, 'sources', {
         if (!this._sources) {
             if (!this.memory.sources) {
                 let sources = [];
-                _.forEach(this.find(FIND_SOURCES), function (s) {
+
+                // Sort room sources by distance from the controller
+                // @TODO should this be distance to Spawn1?
+                let roomSources = _.sortBy(this.find(FIND_SOURCES), (s) =>
+                    this.controller.pos.getRangeTo(s)
+                );
+
+                _.forEach(roomSources, function (s) {
                     sources.push({
                         id: s.id,
                         maxWorkers: s.maxWorkers,
@@ -242,6 +281,29 @@ Object.defineProperty(Room.prototype, 'sources', {
     set: function(value) {
         this.memory.sources = value;
         this._sources = value;
+    },
+    enumerable: true,
+    configurable: true
+});
+
+/**
+ * Cache tasks.
+ *
+ * @return {object}
+ */
+Object.defineProperty(Room.prototype, 'tasks', {
+    get: function() {
+        if (!this._tasks) {
+            if (!this.memory.tasks) {
+                this.memory.tasks = {};
+            }
+            this._tasks = this.memory.tasks;
+        }
+        return this._tasks;
+    },
+    set: function(value) {
+        this.memory.tasks = value;
+        this._tasks = value;
     },
     enumerable: true,
     configurable: true

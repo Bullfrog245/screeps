@@ -4,6 +4,7 @@ require("creep");
 require("room");
 require("source");
 require('structure.controller');
+require('structure.extension');
 require("structure.spawn");
 
 let Debug = require("debug");

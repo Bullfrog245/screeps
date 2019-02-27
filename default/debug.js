@@ -29,14 +29,13 @@ module.exports = (function () {
     //     console.log('<font color="' + this.colors['highlight'] + '" type="highlight">' + message + "</font>")
     // }
 
-
-    /**
-     * Log a debug message to the console if debugging is enabled
-     *
-     * @param {mixed} message
-     * @param {object} entity
-     */
     return {
+        /**
+         * Log a debug message to the console if debugging is enabled
+         *
+         * @param {mixed} message
+         * @param {object} entity
+         */
         log: function(message, severity = 3) {
             if (severity < level)
                 return;
@@ -49,5 +48,23 @@ module.exports = (function () {
 
             console.log('<font color="' + colors[severity] + '" severity="' + severity + '">' + message + "</font>")
         },
+
+        /**
+         * Takes the first line of an Error stacktrace, strips out the evalCode
+         * nonsense, and appends the actual error message
+         *
+         * Object.Room.processTasks (eval at exports.evalCode (blob:chrome-extension://cknihipnnkgolgdlfodbibfmdmhhbmlb/1e9240a6-78bc-46c4-b0ba-57d98116880e:2:11347), :26:27) - structures[i].dispatch is not a function
+         * Object.Room.processTasks:26:27 - structures[i].dispatch is not a function
+         *
+         * @param {Error} e
+         * @param {integer} severity
+         */
+        error: function (e, severity = 5) {
+            let caller_line = e.stack.split("\n")[1];
+            let index = caller_line.indexOf("at ");
+            let clean = caller_line.slice(index + 2, caller_line.length);
+            let message = clean.replace(/\s\(.*?\),\s/gm, "").replace(")", "");
+            console.log(`<font color="${colors[severity]}" severity="${severity}">${message} - ${e.message}</font>`);
+        }
     }
 })();

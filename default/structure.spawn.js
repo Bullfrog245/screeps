@@ -10,20 +10,19 @@ let Debug = require("debug");
  *
  */
 StructureSpawn.prototype.dispatch = function () {
-    // Ensure there is at least one worker
-    if (_.isEmpty(Game.creeps))
-        this.spawnCreep([WORK, CARRY, MOVE]);
+    let creeps = Object.keys(Game.creeps).length;
 
-    if (Object.keys(Game.creeps).length < this.room.controller.level * 2)
-        this.spawnCreep([WORK, CARRY, MOVE]);
+    // Check to see if creeps need to be spawned
+    if (!creeps || creeps < this.maxSupportedCreeps())
+        this.spawnCreep();
 
     // Check if the spawn needs energy
     if (this.energy < this.energyCapacity) {
         // Only add an energy request if a request hasn't already been made
-        this.room.addTask(this.id, "gatherEnergy");
+        this.room.addTask(this, "gatherEnergy", {priority: 2});
     } else {
         // Remove the energy request if the energy is full
-        this.room.deleteTask(this.id);
+        this.room.deleteTask(this, "gatherEnergy");
     }
 };
 
@@ -37,6 +36,36 @@ StructureSpawn.prototype.gatherEnergy = function (task) {
     }
 };
 
+/* Creep Spawning
+------------------------------------------------------------------------------*/
+/**
+ * Determine the maximum number of creeps that this Room can support
+ */
+StructureSpawn.prototype.maxSupportedCreeps = function () {
+    return this.room.controller.level * 3;
+}
+
+/**
+ * Determine the parts a creep should be spawned with
+ */
+StructureSpawn.prototype.creepParts = function () {
+    let capacity = this.room.energyCapacityAvailable;
+
+    if (capacity < 400) {
+        // Creep cost: 200
+        return [WORK, CARRY, MOVE];
+    } else if (capacity < 550) {
+        // Creep cost: 350
+        return [WORK, WORK, CARRY, MOVE, MOVE];
+    } else {
+        return [WORK, CARRY, MOVE];
+    }
+}
+
+
+
+/* Creep Overrides
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 /**
  * Add automatic creep naming to the spawnCreep() method
  */
@@ -50,10 +79,18 @@ if (!StructureSpawn.prototype._spawnCreep) {
      * @param {array} body
      * @param {object} opts
      */
-    StructureSpawn.prototype.spawnCreep = function(body, opts = {}) {
+    StructureSpawn.prototype.spawnCreep = function(body = false, opts = {}) {
         // Creep names are of the form "c#". We increment creepName with each
         // creep that is spawned.
         if (!Memory.creepName) Memory.creepName = 1;
+
+        // Set default body
+        body = body || this.creepParts();
+
+        // Prevent needless creepName increments if we can't spawn
+        // (E.g., ERR_BUSY or ERR_NOT_ENOUGH_ENERGY)
+        let code = this._spawnCreep(body, Game.time, {dryRun: true});
+        if (code !== OK) return code;
 
         // Set default opts
         let defaultOpts = {memory: {busy: false, needEnergy: true}};
@@ -62,13 +99,14 @@ if (!StructureSpawn.prototype._spawnCreep) {
         // Increment creepName until we have a name that doesn't exist. Prevents
         // errors should memory be cleared unexpectedly
         let name;
-        let canCreate;
+        let valid;
         do {
             name = `Creep${Memory.creepName++}`;
-            canCreate = this._spawnCreep(body, name, {dryRun: true});
-        } while (canCreate === ERR_NAME_EXISTS);
+            valid = this._spawnCreep(body, name, {dryRun: true});
+        } while (valid === ERR_NAME_EXISTS);
 
         // Call the original function passing in our generated name
+        Debug.log(`${name}: ${body}`, 3);
         return this._spawnCreep(body, name, opts);
     };
 }

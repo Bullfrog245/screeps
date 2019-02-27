@@ -8,7 +8,7 @@ let Debug = require("debug");
  *
  */
 ConstructionSite.prototype.dispatch = function () {
-    this.room.addTask(this.id, "build");
+    //this.room.addTask(this.id, "build");
 
     if (this.progress > 0) {
         let done = Math.floor((this.progress / this.progressTotal) * 100);
