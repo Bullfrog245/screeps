@@ -1,8 +1,13 @@
 /**
  * @file Modifications to the Creep prototype
  */
-//let Config = require("config");
-let Debug = require("debug");
+"use strict";
+/* jshint -W117 */
+
+/**
+ * Module dependencies
+ */
+const Debug = require("debug");
 
 /**
  *
@@ -40,7 +45,7 @@ Creep.prototype.needEnergy = function () {
 
     this.memory.needEnergy = _needEnergy;
     return _needEnergy;
-}
+};
 
 /**
  * Harvest energy from the first available source
@@ -48,7 +53,7 @@ Creep.prototype.needEnergy = function () {
 Creep.prototype.harvestEnergy = function () {
     let source = this.room.findSource();
     return this.harvest(source);
-}
+};
 
 /**
  * Withdraw energy from the closest container. If no containers are available,
@@ -68,7 +73,7 @@ Creep.prototype.withdrawEnergy = function () {
 
     containers = _.sortBy(containers, c => this.pos.getRangeTo(c));
     Debug.log(containers);
-}
+};
 
 /**
  *

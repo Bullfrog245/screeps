@@ -3,6 +3,14 @@
  *
  * @link https://emojipedia.org/objects/
  */
+"use strict";
+/* jshint -W117 */
+
+/**
+ * Module dependencies
+ */
+const Debug = require("debug");
+
 var structureTower = (function () {
     var helperError = require('helper.error');
 
@@ -31,7 +39,7 @@ var structureTower = (function () {
                 }
             }
 		},
-	}
+	};
 })();
 
 module.exports = structureTower;

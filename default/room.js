@@ -3,9 +3,14 @@
  *
  * @link https://docs.screeps.com/api/#Room
  */
-//let Config = require("config");
-let Debug = require("debug");
-let Circle = require('helper.circle');
+"use strict";
+/* jshint -W117 */
+
+/**
+ * Module dependencies
+ */
+const Debug = require("debug");
+const Circle = require('helper.circle');
 
 /**
  * Assign tasks to creeps
@@ -17,10 +22,8 @@ let Circle = require('helper.circle');
  * @TODO task priorities
  */
 Room.prototype.processTasks = function() {
-    Debug.log("Room.processTasks();", 1);
-
     // Allow all structures to queue tasks
-    let structures = this.find(FIND_MY_STRUCTURES);
+    const structures = this.find(FIND_MY_STRUCTURES);
     for (let i = 0, l = structures.length; i < l; ++i) {
         try {
             structures[i].dispatch();
@@ -35,57 +38,53 @@ Room.prototype.processTasks = function() {
         return false;
 
     // Order tasks by priority
-    let tasks = _.sortByAll(this.tasks, ["priority"]);
-    Debug.log(tasks, 2);
+    const tasks = _.sortByAll(this.tasks, ["priority"]);
 
     // Get idle creeps in the current room
-    let idleCreeps = _.filter(Game.creeps, (c) =>
+    const idleCreeps = _.filter(Game.creeps, (c) =>
         c.memory.busy == false && c.room == this && c.spawning == false
     );
-    Debug.log(`${idleCreeps.length} idle creeps`, 1);
 
     // Process the task list
-    _.forOwn(tasks, function(task, key) {
+    for (const key in tasks) {
+        if (!tasks.hasOwnProperty(key)) continue;
+
         // Load the task entity
-        let entity = Game.getObjectById(task.id);
+        const task = tasks[key];
+        const entity = Game.getObjectById(task.id);
 
         // Remove any tasks associated with stale IDs
         // (E.g., When a ConstructionSite changes to a Structure)
         if (!entity) {
             this.deleteTask(key);
-            return true;
+            continue;
         }
 
-        // If the current task is processing, move on to the next one
+        // Handle tasks that have already been assigned
         if ("processing" === task.status) {
+            // If the creep assigned to this task has died, reset the status
             if (!Game.creeps[task.creep]) {
-                Debug.log(`Clearing task previously assigned to ${task.creep}`, 3);
                 task.status = false;
                 task.creep = false;
             } else {
-                try {
-                    entity[task.callback](task);
-                    return true;
-                } catch (e) {
-                    Debug.log(task.callback, 5);
-                    Debug.error(e);
-                }
+                // Process the task
+                this.processTask(entity, task);
+                continue;
             }
         }
 
-        // If there are no idle creeps, move on to the next task. We can't
-        // break here, because then "processing" tasks won't get called.
+        // If there are no idle creeps, move on to the next task
         if (!idleCreeps.length)
-            return true;
+            continue;
 
-        // Assign a creep to the task
-        let creep = idleCreeps.shift();
+        // Assign a creep to the task and process it
+        const creep = idleCreeps.shift();
 
         creep.memory.busy = true;
         task.status = "processing";
         task.creep = creep.name;
-        entity[task.callback](task);
-    }.bind(this));
+        this.processTask(entity, task);
+    }
 
     // If there are still idle creeps, have them build construction sites or
     // upgrade the controller. We don't set their "busy" flag, which lets them
@@ -118,7 +117,7 @@ Room.prototype.processTasks = function() {
 
 Room.prototype.taskKey = function (entity, callable) {
     return [entity.id, callable].join("_");
-}
+};
 
 /**
  * Add a task
@@ -147,7 +146,7 @@ Room.prototype.addTask = function (entity, callable, config = {}) {
     Debug.log(`Task ${key} added`, 3);
 
     return OK;
-}
+};
 
 /**
  * Remove a task
@@ -177,7 +176,22 @@ Room.prototype.deleteTask = function (entity, callable = null) {
     Debug.log(`Task ${key} deleted`, 3);
 
     return OK;
-}
+};
+
+/**
+ * Process a task
+ *
+ * @param {Structure} entity
+ * @param {Object} task
+ */
+Room.prototype.processTask = function (entity, task) {
+    try {
+        entity[task.callback](task);
+    } catch (e) {
+        Debug.log(task.callback, 5);
+        Debug.error(e);
+    }
+};
 
 /**
  * Find a source with space for harvesting
@@ -212,7 +226,7 @@ Room.prototype.pullPermits = function () {
     let limits = {
         [STRUCTURE_EXTENSION]: {0:0,1:0,2:5,3:10,4:20,5:30,6:40,7:50,8:60},
         [STRUCTURE_CONTAINER]: {0:0,1:0,2:5,3:5,4:5,5:5,6:5,7:5,8:5},
-    }
+    };
 
     let center = this.find(FIND_MY_STRUCTURES, {
         filter: { structureType: STRUCTURE_SPAWN }
@@ -239,7 +253,7 @@ Room.prototype.pullPermits = function () {
     }.bind(this));
 
     return OK;
-}
+};
 
 
 

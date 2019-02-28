@@ -3,8 +3,13 @@
  *
  * @link https://emojipedia.org/objects/
  */
-//let Config = require("config");
-let Debug = require("debug");
+"use strict";
+/* jshint -W117 */
+
+/**
+ * Module dependencies
+ */
+const Debug = require("debug");
 
 /**
  *
@@ -60,7 +65,7 @@ StructureSpawn.prototype.creepParts = function () {
     } else {
         return [WORK, CARRY, MOVE];
     }
-}
+};
 
 
 

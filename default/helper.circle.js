@@ -3,6 +3,9 @@
  *
  * @link https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
  */
+"use strict";
+/* jshint -W117 */
+
 module.exports = (function () {
 
 	return {

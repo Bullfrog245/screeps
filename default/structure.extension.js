@@ -3,8 +3,13 @@
  *
  * @link https://docs.screeps.com/api/#Room
  */
-//let Config = require("config");
-let Debug = require("debug");
+"use strict";
+/* jshint -W117 */
+
+/**
+ * Module dependencies
+ */
+const Debug = require("debug");
 
 /**
  *

@@ -3,8 +3,13 @@
  *
  * @link https://emojipedia.org/objects/
  */
-//let Config = require("config");
-let Debug = require("debug");
+"use strict";
+/* jshint -W117 */
+
+/**
+ * Module dependencies
+ */
+const Debug = require("debug");
 
 /**
  *
@@ -25,7 +30,7 @@ StructureController.prototype.signController = function (task) {
         switch(status) {
             case OK:
                 this.room.deleteTask(this, "signController");
-                break
+                break;
             case ERR_NOT_IN_RANGE:
                 creep.moveTo(this, {visualizePathStyle: {stroke: '#ffffff'}});
                 break;

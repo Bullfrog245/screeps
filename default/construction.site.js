@@ -1,15 +1,18 @@
 /**
  * @file Modifications to the ConstructionSite prototype
  */
-//let Config = require("config");
-let Debug = require("debug");
+"use strict";
+/* jshint -W117 */
+
+/**
+ * Module dependencies
+ */
+const Debug = require("debug");
 
 /**
  *
  */
 ConstructionSite.prototype.dispatch = function () {
-    //this.room.addTask(this.id, "build");
-
     if (this.progress > 0) {
         let done = Math.floor((this.progress / this.progressTotal) * 100);
         this.room.visual.text(
