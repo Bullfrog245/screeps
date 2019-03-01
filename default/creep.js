@@ -12,12 +12,8 @@ const Debug = require("debug");
 /**
  *
  */
-Creep.prototype.sayHello = function () {
-    if (Game.time % 4 == 0)
-        this.say("*beep*");
-
-    if (Game.time % 4 == 2)
-        this.say("*boop*");
+Creep.prototype.sayRibbit = function () {
+    this.say("\u{1F438} *ribbit*");
 };
 
 /**
@@ -146,6 +142,35 @@ if (!Creep.prototype._harvest) {
             {align: 'center', opacity: 0.8}
         );
 
+        return status;
+    };
+}
+
+/**
+ *
+ */
+if (!Creep.prototype._move) {
+    Creep.prototype._move = Creep.prototype.move;
+
+    /**
+     * Move the creep one square in the specified direction. Requires the MOVE
+     * body part, or another creep nearby pulling the creep. In case if you call
+     * move on a creep nearby, the ERR_TIRED and the ERR_NO_BODYPART checks will
+     * be bypassed; otherwise, the ERR_NOT_IN_RANGE check will be bypassed.
+     *
+     * @param {Creep|number} direction
+     */
+    Creep.prototype.move = function(direction) {
+        let status = this._move(direction);
+
+        // An attempt to make screeps polite
+        switch(status) {
+            case ERR_INVALID_ARGS:
+                this.say("Excuse me!");
+                break;
+        }
+
+        //Debug.log(status, 4);
         return status;
     };
 }

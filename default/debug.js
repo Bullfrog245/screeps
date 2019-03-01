@@ -2,6 +2,7 @@
  * Debug Module
  */
 "use strict";
+/* jshint -W117 */
 
 function Debug() {
     this.level = 3;
@@ -15,6 +16,22 @@ function Debug() {
         'highlight': '#ffff00',
     };
 }
+
+Debug.prototype.showDeveloperTools = function (name) {
+    const room = Game.rooms[name];
+
+    let data = [
+        `Current tick: ${Game.time}`,
+        `Queued tasks: ${Object.keys(room.memory.tasks).length}`,
+        `Creep count: ${Object.keys(Game.creeps).length}/${(room.controller.level * 2) + 1}`,
+    ];
+
+    for (let i = 0, l = data.length; i < l; ++i) {
+        new RoomVisual(name).text(data[i], 1, 10 + i, {
+            align: 'left',
+        });
+    }
+};
 
 /**
  *

@@ -219,7 +219,7 @@ Room.prototype.findSource = function (creep) {
         this.roadToSource(Game.getObjectById(this.sources[s].id), spawns[i]);
     }
 
-    Debug.log(`Assigned ${creep.name} to ${available[0].id}`);
+    Debug.log(`Assigned ${creep.name} to ${available[0].id}`, 2);
     return Game.getObjectById(available[0].id);
 };
 
