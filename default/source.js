@@ -47,17 +47,17 @@ Source.prototype.calculateMaxWorkers = function() {
 
 /**
  * @return {object}
- */
-Object.defineProperty(Source.prototype, 'maxWorkers', {
-    get: function() {
-        if (!this._maxWorkers) {
-            this._maxWorkers = this.calculateMaxWorkers()
-        }
-        return this._maxWorkers;
-    },
-    set: function(value) {
-        this._maxWorkers = value;
-    },
-    enumerable: true,
-    configurable: true
-});
+//  */
+// Object.defineProperty(Source.prototype, 'maxWorkers', {
+//     get: function() {
+//         if (!this._maxWorkers) {
+//             this._maxWorkers = this.calculateMaxWorkers();
+//         }
+//         return this._maxWorkers;
+//     },
+//     set: function(value) {
+//         this._maxWorkers = value;
+//     },
+//     enumerable: true,
+//     configurable: true
+// });

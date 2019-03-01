@@ -4,7 +4,7 @@
 /**
  * Module dependencies
  */
-require("debug");
+const Debug = require("debug");
 
 /**
  * Prototype Overrides

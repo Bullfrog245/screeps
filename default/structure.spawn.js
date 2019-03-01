@@ -31,13 +31,20 @@ StructureSpawn.prototype.dispatch = function () {
     }
 };
 
+/**
+ *
+ */
 StructureSpawn.prototype.gatherEnergy = function (task) {
     let creep = Game.creeps[task.creep];
 
     if (creep.carry.energy < creep.carryCapacity) {
-        creep.harvestEnergy();
+        try {
+            creep.harvestEnergy();
+        } catch (e) {
+            Debug.log(e.stack, 5);
+        }
     } else {
-        creep.transfer(this, RESOURCE_ENERGY)
+        creep.transfer(this, RESOURCE_ENERGY);
     }
 };
 
@@ -47,8 +54,8 @@ StructureSpawn.prototype.gatherEnergy = function (task) {
  * Determine the maximum number of creeps that this Room can support
  */
 StructureSpawn.prototype.maxSupportedCreeps = function () {
-    return this.room.controller.level * 3;
-}
+    return (this.room.controller.level * 2) + 1;
+};
 
 /**
  * Determine the parts a creep should be spawned with
@@ -98,7 +105,11 @@ if (!StructureSpawn.prototype._spawnCreep) {
         if (code !== OK) return code;
 
         // Set default opts
-        let defaultOpts = {memory: {busy: false, needEnergy: true}};
+        let defaultOpts = {memory: {
+            busy: false,
+            needEnergy: true,
+            source: false,
+        }};
         opts = _.extend(defaultOpts, opts);
 
         // Increment creepName until we have a name that doesn't exist. Prevents

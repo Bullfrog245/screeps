@@ -36,11 +36,16 @@ Creep.prototype.needEnergy = function () {
     // Adjust needEnergy flag when energy hits either limit
     if (!_needEnergy && this.carry.energy <= 0) {
         _needEnergy = true;
-        Debug.log(`${this.name} energy full`, 2);
+        Debug.log(`${this.name} energy empty`, 2);
     }
     if (_needEnergy && this.carry.energy >= this.carryCapacity) {
         _needEnergy = false;
-        Debug.log(`${this.name} energy empty`, 2);
+
+        // Unassign workers for this source
+        const s = this.room.sources.findIndex(s => s.id === this.memory.source);
+        this.room.sources[s].workers--;
+        this.memory.source = false;
+        Debug.log(`${this.name} energy full`, 2);
     }
 
     this.memory.needEnergy = _needEnergy;
@@ -51,8 +56,11 @@ Creep.prototype.needEnergy = function () {
  * Harvest energy from the first available source
  */
 Creep.prototype.harvestEnergy = function () {
-    let source = this.room.findSource();
-    return this.harvest(source);
+    if (this.memory.source) {
+        return this.harvest(Game.getObjectById(this.memory.source));
+    } else {
+        return this.harvest(this.room.findSource(this));
+    }
 };
 
 /**

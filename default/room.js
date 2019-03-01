@@ -198,16 +198,76 @@ Room.prototype.processTask = function (entity, task) {
  *
  * @TODO update source worker counts
  */
-Room.prototype.findSource = function () {
-    let available = _.filter(this.sources, function (s) {
-        return s.workers < s.maxWorkers;
-    });
+Room.prototype.findSource = function (creep) {
+    // Find all sources that have open worker slots
+    let available = _.filter(this.sources, (s) => s.workers < s.maxWorkers);
 
-    if (available.length) {
-        return Game.getObjectById(available[0].id);
+    // Bail if there are no sources available
+    if (!available.length)
+        return false;
+
+    // Assign the first available source to the creep
+    const s = this.sources.findIndex(s => s.id === available[0].id);
+    creep.memory.source = available[0].id;
+    this.sources[s].workers++;
+
+    // Check if a road needs built
+    const spawns = this.find(FIND_MY_SPAWNS);
+    for (let i = 0, l = spawns.length; i < l; ++i) {
+        if (this.sources[s].roads.indexOf(spawns[i].id) > -1)
+            continue;
+        this.roadToSource(Game.getObjectById(this.sources[s].id), spawns[i]);
     }
 
-    return false;
+    Debug.log(`Assigned ${creep.name} to ${available[0].id}`);
+    return Game.getObjectById(available[0].id);
+};
+
+/**
+ * Find a path from the Spawn to a source, avoiding creeps and construction
+ * sites
+ *
+ * @TODO reverse build order; building from source to spawn is faster
+ * @TODO don't put a construction site on the source...
+ * @TODO this is horribly inefficient...
+ *
+ * @param {Source} source
+ * @param {Object} destination
+ */
+Room.prototype.roadToSource = function (source, destination) {
+    Debug.log(`Room.roadToSource(${source}, ${destination})`, 1);
+
+    const s = this.sources.findIndex(s => s.id === source.id);
+    const memory = this.sources[s];
+
+    // Check if there is already a road between the source and the destination
+    if (memory.roads.indexOf(destination.id) > -1)
+        return;
+
+    // Find a path from the Source to the destination. This allows creeps to
+    // build the road in the optimal manner
+    const path = this.findPath(source.pos, destination.pos, {
+        ignoreCreeps: true,
+        costCallback: function (roomName, costMatrix) {
+            const sites = Game.rooms[roomName].find(FIND_CONSTRUCTION_SITES);
+            for (let i = 0, l = sites.length; i < l; ++i) {
+                costMatrix.set(sites[i].pos.x, sites[i].pos.y, 255);
+            }
+        },
+    });
+
+    // Build a road from the Source to the destination. It is possible to build
+    // roads on walls (45k energy), so make sure that tile that the Source is
+    // on is not built upon.
+    const terrain = new Room.Terrain(this.name);
+    for (let i = 0, l = path.length; i < l; ++i) {
+        if (terrain.get(path[i].x, path[i].y) === TERRAIN_MASK_WALL)
+            continue;
+        this.createConstructionSite(path[i].x, path[i].y, STRUCTURE_ROAD);
+    }
+
+    // Remember that a road has been built along this path
+    this.sources[s].roads.push(destination.id);
 };
 
 /**
@@ -278,13 +338,18 @@ Object.defineProperty(Room.prototype, 'sources', {
                     this.controller.pos.getRangeTo(s)
                 );
 
-                _.forEach(roomSources, function (s) {
+                // Build array of sources. I decided that finding a specific
+                // source in an array is cleaner than calculating the length
+                // of an object hash...
+                for (let i = 0, l = roomSources.length; i < l; ++i) {
                     sources.push({
-                        id: s.id,
-                        maxWorkers: s.maxWorkers,
+                        id: roomSources[i].id,
+                        maxWorkers: roomSources[i].calculateMaxWorkers(),
                         workers: 0,
+                        roads: [],
                     });
-                });
+                }
+
                 this.memory.sources = sources;
                 Debug.log(`Sources cached for Room ${this.name}`);
             }
@@ -296,7 +361,7 @@ Object.defineProperty(Room.prototype, 'sources', {
         this.memory.sources = value;
         this._sources = value;
     },
-    enumerable: true,
+    enumerable: false,
     configurable: true
 });
 
